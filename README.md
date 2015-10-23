@@ -1,10 +1,12 @@
 # mdi.js
  
-##### Minimalistic Drag Input (touch / mouse polyfill)
+### Minimalistic Drag Input (touch / mouse polyfill)
+####Usage
+
+    var config = { onInput : inputHandlerFunc }
+    mdiBindInput(element, config) // Initiate drag input on a DOM element
    
-   use mdiBindInput(element, config) to initiate drag input on a DOM element
-   
-###config argument callbacks and options:
+####Config argument callbacks and options:
      
      	onMove			// function(id, data)     
      					//	 * id for inputtype, numbers for touch fingers, "mouse0", "mouse1" etc for mousebuttons
@@ -13,12 +15,12 @@
      	onStart			// function(id, data, info)
      					//	 * id   (see above)
      					//	 * data (see above)
-     					//   * info is always 'start'
+     					//  * info is always 'start'
      
      	onEnd			// function(id, data, info)
      					//	 * id   (see above)
      					//	 * data (see above)
-     					//   * info is always 'end'
+     					//  * info is always 'end'
      
      	onInput 		// function(id, data, diff_or_info)  
      					//   if this is defined it will be used as a fallback for the above functions 
@@ -30,5 +32,5 @@
      					
      	wantMouseWheel	//  true or false (default is false)
  
-     	wantBrowserContextMenu	//  true or false (default is false)
-                               //  note that this is globally, not just for the element
+     	wantBrowserContextMenu	//  true or false (default is true)
+                             //  note that this is globally, not just for the element
