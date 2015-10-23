@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+<link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+<title>mdi.js test</title>
+
+<style type="text/css">
+  body { background-color: #1D1815; font-family: 'Lato', sans-serif; }
+  h1, h2, h3, h4, h5, h6, p { color: #C0AA99; }
+</style>
+
+</head>
+<body>
+
+	<center>
+		<H2>mdi.j test</H2>
+		
+		<div id="TraceDiv"></div>
+		
+		<canvas id="canvasTest" width = "800" height = "600"> </canvas>>
+	</center	>	
+
+<script src="mdi.js"></script>
+<script>
+
+var traced = ''
+var traceF = function(txt) {
+	traced += txt + '<br/>'
+	document.getElementById('TraceDiv').innerHTML = '<p>' + traced + '</p>'
+}
+
+trace = traceF
+
+var createInputTest = function(canvas) {
+	var inputData = {}
+	var colorInc = 0
+	var colors = ['#FFF', '#0FF', '#F0F', '#FF0', '#F00', '#0F0', '#00F']
+	var ctx = canvas.getContext('2d')
+
+	var draw = function() {
+		ctx.globalAlpha = 1
+		ctx.fillStyle = '#000'
+		ctx.fillRect(0, 0, 800, 600);
+		for(var k in inputData) { var v = inputData[k]
+			if(v) {
+			    var size = 18
+				var sizeOnOff = size/8
+				ctx.fillStyle = k == 'mouseHover' ? '#333' : v.color
+				if(v.del) {
+					ctx.globalAlpha = v.alpha
+					ctx.fillRect(v.x-size, v.y-size, sizeOnOff, size*2);
+					ctx.fillRect(v.x+size-sizeOnOff, v.y-size, sizeOnOff, size*2);
+					ctx.globalAlpha = 1
+					v.alpha = v.alpha - 0.05
+					if(v.alpha <= 0) {
+						inputData[k] = undefined
+					}
+				} else if(v.first) {
+					ctx.fillRect(v.x-size, v.y-size, size*2, sizeOnOff);
+					ctx.fillRect(v.x-size, v.y+size-sizeOnOff, size*2, sizeOnOff);							
+				} else {
+					var szX = size - sizeOnOff
+					var szY = size - sizeOnOff
+					ctx.fillRect(v.x - szX, v.y - szY, szX*2, szY*2);
+				}
+			}
+		}
+	}
+	draw()
+
+	return {
+		input: function(id, pos, status) {
+			if(status === 'start') {
+				inputData[id] = {x:pos.x, y:pos.y, alpha:1, first:1, color:colors[(colorInc++) % colors.length]}
+			} else if(status === 'end') {
+				inputData[id].del = true
+			} else {
+				inputData[id].x = pos.x
+				inputData[id].y = pos.y
+				inputData[id].first = 0		
+			}
+			draw()
+		},
+
+	}
+}
+
+var canvas = document.getElementById('canvasTest')
+var test = createInputTest(canvas)
+mdiBindInput(canvas, { onInput : test.input })
+
+</script>
+
+</body>
+
+</html>

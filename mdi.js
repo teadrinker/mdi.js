@@ -1,6 +1,8 @@
-
-/*         
+/*
+ *
  *  mdi / Minimalistic Drag Input (touch / mouse polyfill)
+ *  (c) Martin Eklund 2015, MIT License
+ *
  *    
  *  use mdiBindInput(element, config) to initiate drag input on a DOM element
  *    
@@ -20,7 +22,7 @@
  *    					//	 * data (see above)
  *    					//   * info is always 'end'
  *    
- *    	onInput 		// function(id, data, diff_or_info)  
+ *    	onInput 		// function(id, data, info)  
  *    					//   if this is defined it will be used as a fallback for the above functions 
  *    					
  *    	getPageOffset	// function(element) { ... return {x: ... , y: ... } }
@@ -30,7 +32,7 @@
  *    					
  *    	wantMouseWheel	//  true or false (default is false)
  *
- *    	wantBrowserContextMenu	//  true or false (default is false)
+ *    	wantBrowserContextMenu	//  true or false (default is true)
  *                              //  note that this is globally, not just for the element
  */
  (function() {
@@ -102,7 +104,7 @@
 			//window.onmousewheel = document.onmousewheel = wheelCallback;
 		}
 
-		if(!wantBrowserContextMenu) {
+		if(wantBrowserContextMenu === false) {
 			window.oncontextmenu = function () { return false; }	
 		}
 
