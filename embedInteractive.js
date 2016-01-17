@@ -28,8 +28,10 @@
 	//	return document.mozFullScreenEnabled ? true : false;
 
 		return	isFillScreen ||
-				document.fullscreenEnabled  ||  document.mozFullScreenElement  || 
-				document.webkitIsFullScreen || (document.msFullscreenElement) ? true : false;
+			//	document.fullscreenEnabled  ||  
+				document.mozFullScreenElement  || 
+				document.webkitIsFullScreen || 
+				document.msFullscreenElement ? true : false;
 	}
 
 
@@ -44,6 +46,11 @@ var requestAnimFrame = (function() {
 	           window.setTimeout(callback, 1000/60);
 	         };
 	})()	
+
+var appendChildFirst = function(parent, childNode){
+    if(parent.firstChild)parent.insertBefore(childNode,parent.firstChild);
+    else parent.appendChild(childNode);
+};
 
 var gCurrentFullScreenItem = undefined
 var gFullScreenOffsetX = 0
@@ -60,14 +67,17 @@ var embedInteractive = function(element_or_id, config_) {
 		var id = typeof element_or_id == 'string' ? element_or_id : 'emb_'+(gIdCounter++)
 		var item = { }
 
-		var adaptToPage = config.adaptToPage
-		var aspectRatio = config.aspectRatio
-		var widthOnPage = config.widthOnPage
+		var bgColor      = config.bgColor || '#000'
+		var adaptToPage  = config.adaptToPage
+		var aspectRatio  = config.aspectRatio
+		var widthOnPage  = config.widthOnPage
 		var heightOnPage = config.heightOnPage
+		var anyAspect    = config.anyAspect || !config.image && !( widthOnPage && heightOnPage || config.pixelW && config.pixelH || aspectRatio )
 		var prevIW, prevIH, prevFs
 		var fsroot, aspect, border, canvas, fshide, fsbutt
 		var validContent
 		var validCanvas
+		var hasPixelCanvas
 		var originalHTML 
 		var allowFs = config.allowFullscreen
 		var canvasQuality = config.quality
@@ -84,9 +94,10 @@ var embedInteractive = function(element_or_id, config_) {
 		var createOrUpdateContent = function() {
 			var style    = 'margin:0; padding:0; -ms-touch-action: none;'
 			var styleRel = 'margin:0; padding:0; position: relative;'
-			var isImage = config.image ? true : false // || isPaused
-			var embedtype = isImage ? 'img' : 'canvas'
+			var isImage = config.image ? true : false
+			var embedtype = isImage ? 'img' : config.elementId ? 'div' : 'canvas'
 			validContent = isImage ? false : true
+			hasPixelCanvas = !isImage && ! config.elementId
 
 			if(!allowFs) {
 				if(canvas && border) { border.removeChild(canvas) }
@@ -99,7 +110,7 @@ var embedInteractive = function(element_or_id, config_) {
 				border = document.createElement('div')     ; border.setAttribute('id', id+'_border') ; border.setAttribute('style', style)
 				canvas = document.createElement(embedtype) ; canvas.setAttribute('id', id+'_canvas') ; canvas.setAttribute('style', style)
 
-				el.appendChild(fsroot);
+				appendChildFirst(el,fsroot);
 				fsroot.appendChild(aspect);
 				aspect.appendChild(border);
 				border.appendChild(canvas);
@@ -114,18 +125,18 @@ var embedInteractive = function(element_or_id, config_) {
 
 				//alert('sill '+id)
 
-				var html = ('<div id="'+id+'_fsroot" '+style+'>'+
-								'<div id="'+id+'_aspect" '+styleRel+'>'+
-									'<div id="'+id+'_border" '+style+'> <'+embedtype+' id="'+id+'_canvas" '+style+'> </div>'+
+				var html = ('<div id="'+id+'_fsroot" '+style+'>\n'+
+								'<div id="'+id+'_aspect" '+styleRel+'>\n'+
+									'<div id="'+id+'_border" '+style+'> <'+embedtype+' id="'+id+'_canvas" '+style+'> </'+embedtype+'> </div>\n'+
 	//								'<div id="'+id+'_border" '+style+'> <'+embedtype+' id="'+id+'_canvas"  moz-opaque '+style+'> </div>'+
 									(allowFs ?
-									'<div id="'+id+'_fshide" '+style+'>'+
-										'<div '+style+'><button id="'+id+'_fsbutt" class="embedInteractive"	>FULLSCREEN</button></div>'+
+									'<div id="'+id+'_fshide" '+style+'>\n'+
+										'<div '+style+'><button id="'+id+'_fsbutt" class="embedInteractive"	>FULLSCREEN</button></div>\n'+
 										originalHTML+
-									'</div>' : originalHTML)+
-								'</div>'+
-							'</div>')
-
+									'</div>\n' : originalHTML)+
+								'</div>\n'+
+							'</div>\n')
+				//alert(html)
 				el.innerHTML = html
 
 				fsroot = document.getElementById(id+'_fsroot')
@@ -135,6 +146,10 @@ var embedInteractive = function(element_or_id, config_) {
 				fshide = allowFs ? document.getElementById(id+'_fshide') : undefined
 				fsbutt = allowFs ? document.getElementById(id+'_fsbutt') : undefined
 
+			}
+
+			if(config.elementId && document.getElementById(config.elementId)) {
+				canvas.appendChild(document.getElementById(config.elementId))
 			}
 
 			if(allowFs && fsbutt) {
@@ -151,10 +166,16 @@ var embedInteractive = function(element_or_id, config_) {
 			    }, true)			
 			}		
 
-			var posMove = config.onInputMove || config.onInput || function(){}
-			var posStart = config.onInputStart || config.onInput || function(){}
-			var posEnd = config.onInputEnd || config.onInput || function(){}	
+			var posMove  = config.onInputMove  || config.onInput
+			var posStart = config.onInputStart || config.onInput
+			var posEnd   = config.onInputEnd   || config.onInput
+
 			if(posMove || posStart || posEnd) {
+
+				posMove  = posMove  || function(){}
+				posStart = posStart || function(){}
+				posEnd   = posEnd   || function(){}			
+
 				var inputHandler = function(id, pos, a3) {
 					var baseSize = typeof id == 'number' ? 30 : 5
 					pos = {
@@ -215,15 +236,30 @@ var embedInteractive = function(element_or_id, config_) {
 				var borderSize = 0
 				if(fs || adaptToPage) {
 					var size = fs ? 1 : adaptToPage
-					if(config.anyAspect) {
+					if(anyAspect) {
 						frameW = Math.floor(size * w)
 						frameH = Math.floor(size * h)
+						if(config.border) borderSize = Math.floor((frameW + frameH)*config.border / 2)
 					} else { 
-						if(aspectRatio == undefined) {
-							aspectRatio = widthOnPage && heightOnPage ? widthOnPage / heightOnPage : 1
+						if(aspectRatio == undefined) { // this can be moved to precalc?
+							if(widthOnPage && heightOnPage) {
+								aspectRatio = widthOnPage / heightOnPage
+							} else if(config.pixelW && config.pixelH) {
+								aspectRatio = config.pixelW / config.pixelH
+							} else {
+							//  this no longer happens, anyAspect is turned on if the others are missing
+							//	throw('embedInteractive.js error: You must specify one of the following: aspectRatio, anyAspect, pixelW/pixelH or widthOnPage/heightOnPage')
+							}
 						}
 						var confBorder = config.border || 0
-						var aspectWithBorder = (aspectRatio*(1+confBorder*2)) / (1*(1+confBorder*2))
+						var aspectRat = aspectRatio
+						if(typeof aspectRat == 'object') {
+							var requestAspectAngle = Math.atan(w/h)
+							var angles = aspectRat.map(Math.atan);
+							aspectRat = angles.reduce(function(p, cur) { return Math.abs(cur - requestAspectAngle) < Math.abs(p - requestAspectAngle) ? cur : p }) 
+							aspectRat = Math.tan(aspectRat)
+						}
+						var aspectWithBorder = (aspectRat*(1+confBorder*2)) / (1*(1+confBorder*2))
 		 				if(w/h > aspectWithBorder) {
 							frameW = Math.floor(size * h * aspectWithBorder)
 							frameH = Math.floor(size * h)
@@ -234,7 +270,7 @@ var embedInteractive = function(element_or_id, config_) {
 							borderSize = Math.floor((w - w/(1+confBorder*2)) / 2)
 						}					
 					}
-				} else if(config.anyAspect) {
+				} else if(widthOnPage && heightOnPage) {
 					frameW = widthOnPage
 					frameH = heightOnPage
 				} else {
@@ -247,7 +283,7 @@ var embedInteractive = function(element_or_id, config_) {
 					canvasH = frameH - borderSize*2
 					border.style.setProperty('width', frameW+'px', null)
 					border.style.setProperty('height', frameH+'px', null)
-					border.style.setProperty('background-color', '#000', null)
+					border.style.setProperty('background-color', bgColor, null)
 			
 					canvas.style.setProperty('position', 'relative', null)
 					canvas.style.setProperty('left', borderSize+'px', null)
@@ -280,28 +316,30 @@ var embedInteractive = function(element_or_id, config_) {
 				pageToCanvasX = innerW / canvasW
 				pageToCanvasY = innerH / canvasH		
 				if(updateCanv) {
-					canvas.width = innerW
-					canvas.height = innerH
-					if(config.onResize) { config.onResize(canvas, innerW, innerH) }
+					if(hasPixelCanvas) {
+						canvas.width = innerW
+						canvas.height = innerH
+					}
+					if(config.onResize) { config.onResize(canvas, innerW, innerH, canvasW, canvasH) }
 				}
 
 				aspect.style.setProperty('width', frameW+'px', null)
 
-				var useCSSTransform = false
-				if(useCSSTransform) {
-					canvas.style.setProperty('width', innerW+'px', null)
-					canvas.style.setProperty('height', innerH+'px', null)				
-					canvas.style.setProperty('transform-origin', 'top left', null)
-					canvas.style.setProperty('transform', 'scale(' + (canvasW/innerW) +', ' + (canvasH/innerH) + ')', null)
-				} else {
+				//var useCSSTransform = false
+				//if(useCSSTransform) {
+				//	canvas.style.setProperty('width', innerW+'px', null)
+				//	canvas.style.setProperty('height', innerH+'px', null)				
+				//	canvas.style.setProperty('transform-origin', 'top left', null)
+				//	canvas.style.setProperty('transform', 'scale(' + (canvasW/innerW) +', ' + (canvasH/innerH) + ')', null)
+				//} else {
 					canvas.style.setProperty('width', canvasW+'px', null)
 					canvas.style.setProperty('height', canvasH+'px', null)
-				}
+				//}
 
 				if(fs) {
 					gFullScreenOffsetX = Math.floor((w-frameW)/2)
 					gFullScreenOffsetY = Math.floor((h-frameH)/2)
-					fsroot.style.setProperty('background-color', '#000', null)
+					fsroot.style.setProperty('background-color', bgColor, null)
 					fsroot.style.setProperty('width', w+'px',  null)
 					fsroot.style.setProperty('height', h+'px',  null)
 					aspect.style.setProperty('height', canvasH+'px', null)
@@ -321,6 +359,31 @@ var embedInteractive = function(element_or_id, config_) {
 					aspect.style.setProperty('top', null, null)
 					if(allowFs) { fshide.style.setProperty('display', 'block', null) }
 				}
+
+
+	// zooming a div correctly seems impossible in firefox unfortunately...
+
+/*
+				if(config.elementId && !config.noContentZoom) {
+					var scalEl = document.getElementById(config.elementId)
+
+				//	var scal = (((canvasW) + (canvasH)) / 2) / 800
+					var scal = Math.sqrt(canvasW * canvasH) / 400
+				//	scal *= (window.devicePixelRatio || 1)
+					scal *= (config.zoom || 1)
+					scalEl.style.setProperty('zoom', scal, null)
+					scalEl.style.setProperty('-ms-zoom', scal, null)
+					scalEl.style.setProperty('-webkit-zoom', scal, null)
+				//	scalEl.style.setProperty('-moz-zoom', scal, null)
+					scalEl.style.setProperty('-moz-transform', 'scale('+scal+','+scal+')', null)
+					scalEl.style.setProperty('-moz-transform-origin', 'left top', null)
+
+			//		var scal = Math.sqrt(canvasW * canvasH) / 400				
+			//		scal *= (config.zoom || 1)
+			//		scalEl.style.setProperty('transform', 'scale('+scal+','+scal+')', null)
+			//		scalEl.style.setProperty('transform-origin', 'left top', null)
+				}
+*/			
 			}
 		}
 
