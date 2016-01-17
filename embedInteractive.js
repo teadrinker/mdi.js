@@ -175,7 +175,7 @@ var embedInteractive = function(element_or_id, config_) {
 						posMove(id, pos, undefined)	// delta)					
 					}
 				}				
-				mdiBindInput(canvas, {onInput: inputHandler, wantMouseHover: !config.excludeMouseHover})
+				mdiBindInput(canvas, {onInput: inputHandler, wantMouseHover: !config.excludeMouseHover, isFullscreen: isFullscreen})
 			}	
 		}
 
